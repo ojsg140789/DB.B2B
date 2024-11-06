@@ -1,0 +1,28 @@
+# Usa la imagen base de PostgreSQL
+FROM postgres:latest
+
+# Configura las variables de entorno para PostgreSQL
+ENV POSTGRES_DB=b2b
+ENV POSTGRES_USER=postgres
+ENV POSTGRES_PASSWORD=postgres
+
+# Expone el puerto predeterminado de PostgreSQL
+EXPOSE 5432
+
+# Copia el archivo init.sql al directorio de entrada del contenedor
+COPY ./sql/init.sql /docker-entrypoint-initdb.d/init.sql
+
+# Instala Python y crea un entorno virtual
+RUN apt-get update && \
+    apt-get install -y python3 python3-venv && \
+    python3 -m venv /venv
+
+# Activa el entorno virtual e instala psycopg2-binary y bcrypt
+RUN /venv/bin/pip install psycopg2-binary bcrypt
+
+# Copia los archivos de datos y el script de Python
+COPY ./data/db.json /data/db.json
+COPY ./python/populate.py /python/populate.py
+
+# Inicia PostgreSQL y luego ejecuta el script Python en segundo plano
+CMD ["bash", "-c", "docker-entrypoint.sh postgres & sleep 10 && /venv/bin/python /python/populate.py && wait"]
